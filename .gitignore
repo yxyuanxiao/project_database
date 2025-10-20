@@ -1,0 +1,12 @@
+# source file related
+*__pycache__*
+*.pyc
+*.o
+*.so
+*.egg
+*.egg-info
+*.idea
+
+# mac hidden
+*.DS_Store*
+.gradio/certificate.pem
