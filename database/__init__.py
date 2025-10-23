@@ -69,8 +69,64 @@ class Database:
     def find_with_pagination(self, query: dict, skip: int, limit: int):
         return self.annotations.find_with_pagination(query, skip, limit)
     
-    def export_annotations_to_json(self, query, filename):
-        return self.annotations.export_to_json(query, filename)
+    def export_to_csv_for_download(self, query):
+        import tempfile
+        import csv
+        import json
+        try:
+            # 解析查询
+            query = json.loads(query) if query.strip() else {}
+            cursor = self.annotations.collection.find(query)
+            rows = []
+            all_fieldnames = set()
+            for doc in cursor:
+                # 提取基础字段
+                base_fields = {
+                    "_id": str(doc.get("_id", "")),
+                    "last_updated_by": "",
+                    "status": doc.get("status", ""),
+                    "tag": doc.get("tag", ""),
+                    "updated_at": doc.get("updated_at", ""),
+                    "user_edited_text": doc.get("user_edited_text", ""),
+                }
+                user_id = doc.get("last_updated_by")
+                if user_id:
+                    user = self.get_user_by_id(user_id)
+                    base_fields["last_updated_by"] = user.username if user else f"unknown({user_id})"
+                else:
+                    base_fields["last_updated_by"] = "N/A"
+                meta = doc.get("metadata", {})
+                anno = doc.get("annotations", {})
+                flat_meta = {f"metadata.{k}": v for k, v in meta.items()}
+                flat_anno = {f"annotations.{k}": v for k, v in anno.items()}
+                row = {**base_fields, **flat_meta, **flat_anno}
+                all_fieldnames.update(row.keys())
+                rows.append(row)
+            
+            temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', encoding='utf-8-sig', newline='')
+            if rows:
+                fieldnames = sorted(list(all_fieldnames))
+                writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            else:
+                # 空结果也写表头
+                writer = csv.DictWriter(temp_file, fieldnames=[
+                    "_id", "status", "method_name", "image_name", "tag",
+                    "last_updated_by", "updated_at", "user_edited_text", "revision_advice"
+                ])
+                writer.writeheader()
+            temp_file.close()
+
+            return temp_file.name, f"成功导出 {len(rows)} 条数据"
+    
+        except Exception as e:
+            temp_err = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', encoding='utf-8', newline='')
+            writer = csv.DictWriter(temp_err, fieldnames=["error"])
+            writer.writeheader()
+            writer.writerow({"error": str(e)})
+            temp_err.close()
+            return temp_err.name, f"导出失败: {e}"
 
     def import_annotations_from_json(self, file_path):
         return self.annotations.import_from_json(file_path)

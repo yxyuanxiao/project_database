@@ -189,8 +189,8 @@ class AnnotationRepository:
                         self._release_lock(doc_id, user_id)
                         continue  # 尝试下一个
                     
-            logger.info(f"用户 {user_id} 未能获取文档 {doc_id} 的标注权")
-            return self.get_next_pending_annotation(user_id)  # 递归尝试下一个
+            logger.info(f"用户 {user_id} 未能获取任何待标注任务")
+            return None
             
         except Exception as e:
             logger.error(f"获取待标注数据时出错: {e}")
@@ -424,45 +424,6 @@ class AnnotationRepository:
 
     def count(self, query: dict):
         return self.collection.count_documents(query)
-    
-    def export_to_json(self, query: Optional[Dict] = None, filename: str = "exported_annotations.json") -> int:
-        """
-        将数据库中的标注数据导出为JSON文件
-        
-        Args:
-            query: 查询条件，用于筛选要导出的数据
-            filename: 输出文件名
-            
-        Returns:
-            int: 导出的数据条数
-        """
-        try:
-            if query is None:
-                query = {}
-            
-            cursor = self.collection.find(query)
-            documents = []
-            
-            for doc in cursor:
-                # 将ObjectId转换为字符串
-                doc['_id'] = str(doc['_id'])
-                
-                # 处理datetime对象
-                for key, value in doc.items():
-                    if isinstance(value, datetime):
-                        doc[key] = value.isoformat()
-                
-                documents.append(doc)
-            
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(documents, f, ensure_ascii=False, indent=4, default=str)
-            
-            logger.info(f"成功导出 {len(documents)} 条数据到 {filename}")
-            return len(documents)
-            
-        except Exception as e:
-            logger.error(f"导出数据时出错: {e}")
-            raise
 
     def import_from_json(self, filename: str) -> int:
         """

@@ -87,16 +87,15 @@ class ReviewBusinessLogic:
     def generate_text_with_llm(self, selected_options: Dict[str, str], lq_image, hq_image):
         return generate_text(selected_options, lq_image, hq_image)
 
-    def export_data(self, query_str: str, filename: str) -> str:
+    def export_data_for_download(self, query_str: str) -> str:
         """导出数据"""
         try:
             query = json.loads(query_str) if query_str.strip() else {}
-            count = self.db.export_annotations_to_json(query=query, filename=filename)
-            return f"成功导出 {count} 条数据到 {filename}"
+            return self.db.export_to_csv_for_download(query=query)
         except json.JSONDecodeError as e:
-            return f"查询条件JSON格式错误: {e}"
+            return None, f"查询条件JSON格式错误: {e}"
         except Exception as e:
-            return f"导出失败: {e}"
+            return None, f"导出失败: {e}"
 
     def import_data(self, file_path: str) -> str:
         """导入数据"""

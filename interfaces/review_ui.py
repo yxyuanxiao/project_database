@@ -46,8 +46,8 @@ class ReviewUI:
 
                     with gr.Tab("导出", visible=self.visible):
                         export_query = gr.Textbox(label="查询条件 (JSON)", placeholder='{"status": "annotated"}')
-                        export_filename = gr.Textbox(label="导出文件名", value="exported_annotations.json")
                         export_btn = gr.Button("📤 导出", variant="primary")
+                        export_file_output = gr.File(label="导出文件", interactive=False)
                         export_status = gr.Textbox(label="导出状态", interactive=False)
 
                     with gr.Tab("导入", visible=self.visible):
@@ -162,8 +162,8 @@ class ReviewUI:
                 ]
                 return [task_id.strip(), lq_img, hq_img, status_msg] + opt_vals + [txt]
 
-            def export_data(query_str, filename):
-                return self.controller.export_data(query_str, filename)
+            def export_data_for_download(query_str):
+                return self.controller.export_data_for_download(query_str)
 
             def import_data(file_obj):
                 if not file_obj:
@@ -222,7 +222,11 @@ class ReviewUI:
                     [user_text]
             )
 
-            export_btn.click(export_data, inputs=[export_query, export_filename], outputs=[export_status])
+            export_btn.click(
+                export_data_for_download,
+                inputs=[export_query],
+                outputs=[export_file_output, export_status]
+            )
             import_btn.click(import_data, inputs=[import_file], outputs=[import_status])
 
             review_demo.load(load_task_list, inputs=[page_num, page_size, filter_status, user_state],
